@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guess Who?</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+        :root {
+            --bg-color: #1a1a2e;
+            --card-bg: #30305a;
+            --text-color: #ffffff;
+            --accent: #ff4757;
+            --pixel-border: #000000;
+            --highlight: #51e1ed;
+            --gold: #f1c40f;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: 'Press Start 2P', cursive;
+            background-color: var(--bg-color);
+            color: white;
+            text-align: center;
+            margin: 0;
+            padding: 20px;
+            font-size: 12px;
+        }
+
+        h1 { margin-bottom: 25px; }
+
+        /* ── SETUP SCREEN ── */
+        #setup-screen {
+            max-width: 600px;
+            margin: 40px auto;
+            border: 4px solid var(--highlight);
+            box-shadow: 6px 6px 0 #000;
+            padding: 30px 20px;
+            background: #1e1e3a;
+        }
+
+        #setup-screen h2 {
+            color: var(--highlight);
+            margin-bottom: 30px;
+            font-size: 14px;
+            line-height: 2;
+        }
+
+        .setup-block {
+            border: 3px solid #444;
+            padding: 20px;
+            margin-bottom: 20px;
+            background: #16162a;
+        }
+
+        .setup-block h3 {
+            color: var(--gold);
+            margin: 0 0 18px 0;
+            font-size: 11px;
+        }
+
+        .setup-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+        }
+
+        .setup-row label {
+            font-size: 9px;
+            color: #aaa;
+        }
+
+        input[type="number"], input[type="text"] {
+            font-family: 'Press Start 2P', cursive;
+            font-size: 11px;
+            padding: 8px 10px;
+            background: #2a2a4a;
+            color: white;
+            border: 3px solid #000;
+            box-shadow: 3px 3px 0 #000;
+            width: 80px;
+            text-align: center;
+        }
+
+        input[type="text"].key-input {
+            width: 160px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        .key-display {
+            background: #0a0a1a;
+            border: 3px solid var(--gold);
+            box-shadow: 3px 3px 0 #000;
+            padding: 12px 20px;
+            font-size: 20px;
+            letter-spacing: 6px;
+            color: var(--gold);
+            margin: 10px auto;
+            display: inline-block;
+            min-width: 200px;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .key-display:hover::after {
+            content: "CLICK TO COPY";
+            position: absolute;
+            bottom: -22px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 8px;
+            color: var(--highlight);
+            white-space: nowrap;
+        }
+
+        .key-display.copied {
+            border-color: #2ecc71;
+            color: #2ecc71;
+        }
+
+        #key-hint {
+            font-size: 8px;
+            color: #888;
+            margin-top: 8px;
+        }
+
+        #setup-error {
+            color: var(--accent);
+            font-size: 9px;
+            margin-top: 8px;
+            min-height: 14px;
+        }
+
+        /* ── GAME SCREEN ── */
+        #game-screen { display: none; }
+
+        .game-header {
+            background: #16162a;
+            border: 3px solid var(--highlight);
+            box-shadow: 4px 4px 0 #000;
+            padding: 10px 20px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+            max-width: 1100px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .game-key-badge {
+            background: #0a0a1a;
+            border: 2px solid var(--gold);
+            padding: 6px 12px;
+            font-size: 9px;
+            color: var(--gold);
+            letter-spacing: 3px;
+        }
+
+        .game-key-badge span {
+            color: #aaa;
+            font-size: 7px;
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        #my-character-display {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            margin-bottom: 20px;
+            min-height: 250px; /* Room for the image */
+            color: #f1c40f;
+            font-weight: bold;
+            background: rgba(0, 0, 0, 0);
+            border: 6px double #f1c40f;
+            border-radius: 0px;
+            padding: 10px;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        #my-character-display img {
+            width: 200px;
+            height: 200px;
+            border: 4px solid #ffffff;
+            border-radius: 0;
+            margin-top: 15px;
+            margin-bottom: 10px;
+            border: 3px solid #f1c40f;
+            object-fit: cover;
+        }
+
+        .controls {
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        select {
+            background-color: #2a2a4a;
+            color: white;
+            min-width: 150px;
+        }
+
+        button, select {
+            font-family: 'Press Start 2P';
+            font-size: 16px;
+            padding: 10px 14px;
+            border: 3px solid #000;
+            border-radius: 0;
+            box-shadow: 3px 3px 0 #000;
+            text-transform: uppercase;
+            cursor: pointer;
+        }
+
+        button {
+            background-color: var(--accent);
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+            padding: 10px 20px;
+            transition: background-color 0.2s;
+        }
+
+        button:active {
+            transform: translate(2px, 2px);
+            box-shadow: 1px 1px 0 #000;
+        }
+
+        button:hover { background-color: #c0392b; }
+
+        button.btn-blue {
+            background-color: #2980b9;
+        }
+        button.btn-blue:hover { background-color: #1a6091; }
+
+        button.btn-green {
+            background-color: #27ae60;
+        }
+        button.btn-green:hover { background-color: #1e8449; }
+
+        button.btn-back {
+            background-color: #555;
+            font-size: 9px;
+        }
+        button.btn-back:hover { background-color: #333; }
+
+        .notes-section {
+            max-width: 600px;
+            margin: 20px auto 30px auto;
+            padding: 10px;
+        }
+
+        textarea {
+            width: 100%;
+            height: 200px;
+            padding: 20px;
+            border-radius: 0;
+            border: 4px solid var(--gold);
+            resize: vertical;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 10px;
+            box-sizing: border-box;
+            background-color: #222;
+            line-height: 2;
+            letter-spacing: 0.5px;
+            color: white;
+            box-shadow: 3px 3px 0 #000;
+        }
+
+        textarea::placeholder { color: #bdc3c7; }
+        textarea:focus { outline: 2px solid var(--gold); }
+
+        .board {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 10px;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            color: var(--text-color);
+            border: 4px solid var(--pixel-border);
+            padding: 20px;
+            cursor: pointer;
+            box-shadow: 4px 4px 0 rgba(0,0,0,0.5);
+            transition: transform 0.15s, opacity 0.2s, filter 0.2s;
+            user-select: none;
+        }
+
+        .card img {
+            width: 100px;
+            height: 100px;
+            object-fit: cover;
+            border-radius: 0;
+            border: 3px solid #000;
+            background-color: #555;
+            margin-bottom: 10px;
+        }
+
+        .card h3 {
+            margin: 0;
+            font-size: 100%;
+            line-height: 1.6;
+        }
+
+        .card.eliminated {
+            opacity: 0.25;
+            filter: grayscale(100%);
+            transform: scale(0.93);
+            box-shadow: none;
+        }
+
+        .card:hover:not(.eliminated) {
+            transform: translateY(-4px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.4);
+        }
+
+        .whole { display: flex; }
+
+        @media (max-width: 768px) {
+            .whole { display: block; }
+        }
+
+        /* ── DIVIDER ── */
+        .or-divider {
+            color: #555;
+            font-size: 9px;
+            margin: 16px 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .or-divider::before, .or-divider::after {
+            content: '';
+            flex: 1;
+            height: 2px;
+            background: #333;
+        }
+
+        /* toast */
+        #toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #2ecc71;
+            color: #000;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 9px;
+            padding: 10px 20px;
+            border: 3px solid #000;
+            box-shadow: 3px 3px 0 #000;
+            display: none;
+            z-index: 999;
+        }
+    </style>
+</head>
+<body>
+
+<h1>THE MOST ORIGINAL GAME EVER:<br><br>GUESS WHO?</h1>
+
+<!-- ══════════════════════════════════════════
+     SETUP SCREEN
+══════════════════════════════════════════ -->
+<div id="setup-screen">
+    <h2>⚡ GAME SETUP ⚡</h2>
+
+    <!-- BLOCK 0: Load images folder or ZIP -->
+    <div class="setup-block" id="folder-block">
+        <h3>STEP 1 — LOAD YOUR IMAGES</h3>
+        <p style="font-size:8px; color:#aaa; line-height:2; margin-bottom:16px;">
+            Pick an <span style="color:var(--highlight)">images folder</span> or a <span style="color:var(--gold)">.zip file</span> containing images.
+        </p>
+        <div style="display:flex; gap:14px; justify-content:center; flex-wrap:wrap;">
+            <button onclick="document.getElementById('folder-input').click()">FOLDER</button>
+            <button class="btn-blue" onclick="document.getElementById('zip-input').click()">ZIP FILE</button>
+        </div>
+        <input type="file" id="folder-input" webkitdirectory accept="image/*" style="display:none;">
+        <input type="file" id="zip-input" accept=".zip" style="display:none;">
+        <div id="folder-status" style="margin-top:12px; font-size:9px; color:#888;">NO IMAGES LOADED</div>
+    </div>
+
+    <div id="setup-main" style="display:none;">
+
+    <div class="or-divider" style="color:var(--gold); border-color:var(--gold); font-size:10px;">▼ STEP 2 ▼</div>
+
+    <!-- BLOCK A: Generate a new game -->
+    <div class="setup-block">
+        <h3>▶ START A NEW GAME</h3>
+        <div class="setup-row">
+            <label>HOW MANY CHARACTERS?</label>
+            <input type="number" id="char-count" value="20" min="2" max="85">
+        </div>
+        <button class="btn-green" id="generate-btn">🎲 Generate Key</button>
+        <div id="generated-key-wrap" style="margin-top:14px; display:none;">
+            <div class="key-display" id="generated-key-display" title="Click to copy"></div>
+            <div id="key-hint">SEND THIS CODE TO YOUR FRIEND!</div>
+        </div>
+        <div style="margin-top:12px;">
+            <button class="btn-blue" id="play-generated-btn" style="display:none;">▶ PLAY WITH THIS KEY</button>
+        </div>
+    </div>
+
+    <div class="or-divider">— OR —</div>
+
+    <!-- BLOCK B: Join with a key -->
+    <div class="setup-block">
+        <h3>▶ JOIN WITH A KEY</h3>
+        <div class="setup-row">
+            <label>ENTER KEY:</label>
+            <input type="text" class="key-input" id="key-input" placeholder="XX-XXXX" maxlength="10">
+        </div>
+        <button class="btn-blue" id="load-key-btn">🔑 Load Game</button>
+        <div id="setup-error"></div>
+    </div>
+
+    </div> <!-- /setup-main -->
+</div>
+
+<!-- ══════════════════════════════════════════
+     GAME SCREEN
+══════════════════════════════════════════ -->
+<div id="game-screen">
+
+    <div class="game-header">
+        <button class="btn-back" id="back-btn">← BACK TO SETUP</button>
+        <div class="game-key-badge">
+            <span>GAME KEY</span>
+            <span id="active-key-display">--</span>
+        </div>
+        <div style="font-size:9px; color:#aaa;" id="char-count-display"></div>
+    </div>
+
+    <div class="whole">
+        <div style="margin: 10px 30px 30px 0; min-width: 300px;">
+            <div id="my-character-display">
+                <span>Select your mystery character below!</span>
+            </div>
+
+            <div class="controls">
+                <label for="character-select">YOUR CHARACTER:</label>
+                <select id="character-select">
+                    <option value="">-- Choose --</option>
+                </select>
+                <button id="reset-btn">Reset Board</button>
+            </div>
+
+            <div class="notes-section">
+                <textarea id="player-notes" placeholder="Jot down notes here..."></textarea>
+            </div>
+        </div>
+
+        <div class="board" id="game-board"></div>
+    </div>
+</div>
+
+<div id="toast">✓ COPIED!</div>
+
+<script>
+    // ─────────────────────────────────────────────────────────────────
+    // CHARACTER DATA — built dynamically from the picked images folder
+    // objectURLs maps filename → blob URL for display
+    // ─────────────────────────────────────────────────────────────────
+    let ALL_CHARACTERS = [];   // filled after folder is picked
+    const objectURLs = {};     // filename → blob URL
+
+    // ─────────────────────────────────────────────────────────────────
+    // FOLDER PICKER
+    // ─────────────────────────────────────────────────────────────────
+    const folderInput   = document.getElementById('folder-input');
+    const folderStatus  = document.getElementById('folder-status');
+    const setupMain     = document.getElementById('setup-main');
+    const charCountInput = document.getElementById('char-count');
+
+    const IMAGE_EXTS = ['jpg','jpeg','png','gif','webp','bmp','svg'];
+
+    function loadImageFiles(files) {
+        if (files.length === 0) {
+            folderStatus.textContent = 'NO IMAGE FILES FOUND';
+            folderStatus.style.color = 'var(--accent)';
+            return;
+        }
+        Object.values(objectURLs).forEach(u => URL.revokeObjectURL(u));
+        Object.keys(objectURLs).forEach(k => delete objectURLs[k]);
+        ALL_CHARACTERS = [];
+        files.sort((a, b) => a.name.localeCompare(b.name));
+        files.forEach(file => {
+            const url  = URL.createObjectURL(file);
+            const name = file.name.replace(/\.[^.]+$/, '');
+            objectURLs[name] = url;
+            ALL_CHARACTERS.push({ name, image: url });
+        });
+        charCountInput.max   = ALL_CHARACTERS.length;
+        charCountInput.value = Math.min(parseInt(charCountInput.value) || 20, ALL_CHARACTERS.length);
+        folderStatus.textContent = `✓ ${ALL_CHARACTERS.length} CHARACTERS LOADED`;
+        folderStatus.style.color = '#2ecc71';
+        setupMain.style.display = 'block';
+    }
+
+    folderInput.addEventListener('change', () => {
+        const files = Array.from(folderInput.files).filter(f => {
+            const ext = f.name.split('.').pop().toLowerCase();
+            return IMAGE_EXTS.includes(ext);
+        });
+        loadImageFiles(files);
+    });
+
+    const zipInput = document.getElementById('zip-input');
+    zipInput.addEventListener('change', async () => {
+        const zipFile = zipInput.files[0];
+        if (!zipFile) return;
+        folderStatus.textContent = 'LOADING ZIP...';
+        folderStatus.style.color = '#aaa';
+        try {
+            const zip = await JSZip.loadAsync(zipFile);
+            const imageEntries = [];
+            zip.forEach((relativePath, entry) => {
+                if (entry.dir) return;
+                const filename = relativePath.split('/').pop();
+                const ext = filename.split('.').pop().toLowerCase();
+                if (IMAGE_EXTS.includes(ext)) imageEntries.push({ filename, ext, entry });
+            });
+            if (imageEntries.length === 0) {
+                folderStatus.textContent = 'NO IMAGE FILES FOUND IN ZIP';
+                folderStatus.style.color = 'var(--accent)';
+                return;
+            }
+            const mimeMap = {
+                jpg:'image/jpeg',jpeg:'image/jpeg',png:'image/png',
+                gif:'image/gif',webp:'image/webp',bmp:'image/bmp',svg:'image/svg+xml'
+            };
+            const extractedFiles = await Promise.all(
+                imageEntries.map(async ({ filename, ext, entry }) => {
+                    const blob = await entry.async('blob');
+                    const typedBlob = new Blob([blob], { type: mimeMap[ext] || 'image/jpeg' });
+                    return new File([typedBlob], filename, { type: typedBlob.type });
+                })
+            );
+            loadImageFiles(extractedFiles);
+        } catch (err) {
+            folderStatus.textContent = 'ERROR READING ZIP FILE';
+            folderStatus.style.color = 'var(--accent)';
+            console.error(err);
+        }
+        zipInput.value = '';
+    });
+
+    // ─────────────────────────────────────────────────────────────────
+    // SEEDED RANDOM NUMBER GENERATOR (mulberry32)
+    // Same seed → always same sequence
+    // ─────────────────────────────────────────────────────────────────
+    function mulberry32(seed) {
+        return function () {
+            seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+            let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+            t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+            return ((t ^ t >>> 14) >>> 0) / 4294967296;
+        };
+    }
+
+    function seededShuffle(array, seed) {
+        const arr = [...array];
+        const rand = mulberry32(seed);
+        for (let i = arr.length - 1; i > 0; i--) {
+            const j = Math.floor(rand() * (i + 1));
+            [arr[i], arr[j]] = [arr[j], arr[i]];
+        }
+        return arr;
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // KEY ENCODING / DECODING
+    // Format: CC-SSSS  (CC = count in base36, SSSS = seed in base36)
+    // Example: "1k-zq3f" → count=56, seed=1171503
+    // ─────────────────────────────────────────────────────────────────
+    function encodeKey(count, seed) {
+        const countStr = count.toString(36).toUpperCase().padStart(2, '0');
+        const seedStr  = seed.toString(36).toUpperCase().padStart(4, '0');
+        return `${countStr}-${seedStr}`;
+    }
+
+    function decodeKey(key) {
+        const clean = key.trim().toUpperCase().replace(/\s/g, '');
+        const match = clean.match(/^([0-9A-Z]{1,3})-([0-9A-Z]{3,6})$/);
+        if (!match) return null;
+        const count = parseInt(match[1], 36);
+        const seed  = parseInt(match[2], 36);
+        if (isNaN(count) || isNaN(seed) || count < 2 || count > ALL_CHARACTERS.length)
+            return null;
+        return { count, seed };
+    }
+
+    function getCharactersForKey(count, seed) {
+        const shuffled = seededShuffle(ALL_CHARACTERS, seed);
+        return shuffled.slice(0, count);
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // UI ELEMENTS
+    // ─────────────────────────────────────────────────────────────────
+    const setupScreen       = document.getElementById('setup-screen');
+    const gameScreen        = document.getElementById('game-screen');
+    const generateBtn       = document.getElementById('generate-btn');
+    const generatedKeyWrap  = document.getElementById('generated-key-wrap');
+    const generatedKeyDisp  = document.getElementById('generated-key-display');
+    const playGeneratedBtn  = document.getElementById('play-generated-btn');
+    const keyInput          = document.getElementById('key-input');
+    const loadKeyBtn        = document.getElementById('load-key-btn');
+    const setupError        = document.getElementById('setup-error');
+    // charCountInput already declared above in folder picker section
+    const boardElement      = document.getElementById('game-board');
+    const resetBtn          = document.getElementById('reset-btn');
+    const characterSelect   = document.getElementById('character-select');
+    const display           = document.getElementById('my-character-display');
+    const notes             = document.getElementById('player-notes');
+    const backBtn           = document.getElementById('back-btn');
+    const activeKeyDisplay  = document.getElementById('active-key-display');
+    const charCountDisplay  = document.getElementById('char-count-display');
+    const toast             = document.getElementById('toast');
+
+    let currentKey = null;
+    let currentCharacters = [];
+    let pendingKey = null; // key generated but not yet launched
+
+    // ─────────────────────────────────────────────────────────────────
+    // SETUP SCREEN LOGIC
+    // ─────────────────────────────────────────────────────────────────
+    generateBtn.addEventListener('click', () => {
+        const count = parseInt(charCountInput.value);
+        if (isNaN(count) || count < 2 || count > ALL_CHARACTERS.length) {
+            setupError.textContent = `PICK A NUMBER BETWEEN 2 AND ${ALL_CHARACTERS.length}`;
+            generatedKeyWrap.style.display = 'none';
+            playGeneratedBtn.style.display = 'none';
+            return;
+        }
+        setupError.textContent = '';
+        const seed = Math.floor(Math.random() * 1679616); // 36^4
+        const key  = encodeKey(count, seed);
+        pendingKey = key;
+        generatedKeyDisp.textContent = key;
+        generatedKeyDisp.classList.remove('copied');
+        generatedKeyWrap.style.display = 'block';
+        playGeneratedBtn.style.display = 'inline-block';
+    });
+
+    // click key to copy
+    generatedKeyDisp.addEventListener('click', () => {
+        navigator.clipboard.writeText(generatedKeyDisp.textContent).then(() => {
+            generatedKeyDisp.classList.add('copied');
+            showToast('✓ COPIED!');
+        });
+    });
+
+    playGeneratedBtn.addEventListener('click', () => {
+        if (!pendingKey) return;
+        launchGame(pendingKey);
+    });
+
+    loadKeyBtn.addEventListener('click', () => {
+        const key = keyInput.value.trim();
+        if (!key) { setupError.textContent = 'PLEASE ENTER A KEY'; return; }
+        const decoded = decodeKey(key);
+        if (!decoded) {
+            setupError.textContent = 'INVALID KEY — CHECK AND TRY AGAIN';
+            return;
+        }
+        setupError.textContent = '';
+        launchGame(key);
+    });
+
+    // allow Enter key in input
+    keyInput.addEventListener('keydown', e => {
+        if (e.key === 'Enter') loadKeyBtn.click();
+    });
+
+    // ─────────────────────────────────────────────────────────────────
+    // GAME LAUNCH
+    // ─────────────────────────────────────────────────────────────────
+    function launchGame(key) {
+        const decoded = decodeKey(key);
+        if (!decoded) return;
+        currentKey = key.toUpperCase();
+        currentCharacters = getCharactersForKey(decoded.count, decoded.seed);
+
+        setupScreen.style.display = 'none';
+        gameScreen.style.display = 'block';
+        activeKeyDisplay.textContent = currentKey;
+        charCountDisplay.textContent = `${decoded.count} CHARACTERS IN PLAY`;
+
+        notes.value = '';
+        setupDropdown();
+        setupBoard();
+        display.innerHTML = '<span>Select your mystery character below!</span>';
+    }
+
+    backBtn.addEventListener('click', () => {
+        gameScreen.style.display = 'none';
+        setupScreen.style.display = 'block';
+        pendingKey = null;
+        generatedKeyWrap.style.display = 'none';
+        playGeneratedBtn.style.display = 'none';
+    });
+
+    // ─────────────────────────────────────────────────────────────────
+    // GAME LOGIC (unchanged from original, now uses currentCharacters)
+    // ─────────────────────────────────────────────────────────────────
+    function setupDropdown() {
+        characterSelect.innerHTML = '<option value="">-- Choose --</option>';
+        currentCharacters.forEach(char => {
+            const option = document.createElement('option');
+            option.value = char.name;
+            option.textContent = char.name;
+            characterSelect.appendChild(option);
+        });
+    }
+
+    function setupBoard() {
+        boardElement.innerHTML = '';
+        currentCharacters.forEach(char => {
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.innerHTML = `
+                <img src="${char.image}" alt="${char.name}" onerror="this.style.background='#333';this.alt='?'">
+                <h3>${char.name}</h3>
+            `;
+            card.addEventListener('click', () => card.classList.toggle('eliminated'));
+            boardElement.appendChild(card);
+        });
+    }
+
+    function resetGame() {
+        characterSelect.value = '';
+        notes.value = '';
+        display.innerHTML = '<span>Select your mystery character below!</span>';
+        setupBoard();
+    }
+
+    characterSelect.addEventListener('change', (e) => {
+        const character = currentCharacters.find(c => c.name === e.target.value);
+        if (character) {
+            display.innerHTML = `
+                <span>Your Mystery Character is: ${character.name}</span>
+                <img src="${character.image}" alt="${character.name}">
+            `;
+        } else {
+            display.innerHTML = '<span>Select your mystery character below!</span>';
+        }
+    });
+
+    resetBtn.addEventListener('click', resetGame);
+
+    // ─────────────────────────────────────────────────────────────────
+    // TOAST HELPER
+    // ─────────────────────────────────────────────────────────────────
+    function showToast(msg) {
+        toast.textContent = msg;
+        toast.style.display = 'block';
+        setTimeout(() => toast.style.display = 'none', 1800);
+    }
+</script>
+
+</body>
+</html>
